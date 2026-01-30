@@ -13,46 +13,29 @@ public class ATM {
         boolean systemRunning = true;
 
         while (systemRunning) {
-            System.out.println("\n--- LOGIN MENU ---");
-            System.out.println("1. Customer Login");
-            System.out.println("2. Technician Login");
-            System.out.println("3. Exit System");
-            System.out.print("Choose option: ");
+            // Default: Customer authentication (like real ATMs)
+            System.out.print("Enter username: ");
+            String username = sc.nextLine().trim();
 
-            int loginChoice;
-            try {
-                loginChoice = Integer.parseInt(sc.nextLine());
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid option");
-                continue;
+            System.out.print("Enter password: ");
+            String password = sc.nextLine().trim();
+
+            if (!bank.authenticate(username, password)) {
+                System.out.println("❌ Authentication failed\n");
+                continue; // Go back to login
             }
 
-            switch (loginChoice) {
-                case 1 -> customerLogin(sc, bank, atmStatus);
-                case 2 -> technicianLogin(sc, atmStatus, bank);
-                case 3 -> {
-                    System.out.println("\nThank you for using our ATM. Goodbye!");
-                    systemRunning = false;
-                }
-                default -> System.out.println("Invalid option");
+            System.out.println("Login successful!");
+            customerMenu(sc, bank, atmStatus, username);
+
+            // After customer logout, ask if technician wants to login
+            System.out.print("\nTechnician login? (yes/no): ");
+            String techResponse = sc.nextLine().trim().toLowerCase();
+
+            if (techResponse.equals("yes") || techResponse.equals("y")) {
+                technicianLogin(sc, atmStatus, bank);
             }
         }
-    }
-
-    private static void customerLogin(Scanner sc, Bank bank, ATMStatus atmStatus) {
-        System.out.print("\nEnter username: ");
-        String username = sc.nextLine().trim();
-
-        System.out.print("Enter password: ");
-        String password = sc.nextLine().trim();
-
-        if (!bank.authenticate(username, password)) {
-            System.out.println("❌ Authentication failed");
-            return;
-        }
-
-        System.out.println("Customer login successful!");
-        customerMenu(sc, bank, atmStatus, username);
     }
 
     private static void customerMenu(Scanner sc, Bank bank, ATMStatus atmStatus, String username) {
@@ -122,7 +105,7 @@ public class ATM {
                 case 5 -> bank.getTransactionHistory().showHistory(username);
                 case 6 -> {
                     logout = true;
-                    System.out.println("\nLogged out successfully");
+                    System.out.println("\nThank you for using our ATM!");
                 }
                 default -> System.out.println("Invalid option");
             }
@@ -137,7 +120,7 @@ public class ATM {
         if (response.equals("yes") || response.equals("y")) {
             Receipt.print(username, operation, amount, balance, atmStatus);
         } else {
-            System.out.println("No receipt printed.");
+            System.out.println("\nThank you for using our ATM!");
         }
     }
 
@@ -163,15 +146,11 @@ public class ATM {
         while (!logout) {
             System.out.println("\n╔════════════════════════════╗");
             System.out.println("║     TECHNICIAN MENU        ║");
+            System.out.println("║                            ║");
             System.out.println("╚════════════════════════════╝");
             System.out.println("1. View ATM Status");
             System.out.println("2. View All Transaction History");
-            System.out.println("3. Refill Banknotes");
-            System.out.println("4. Refill Ink");
-            System.out.println("5. Refill Paper");
-            System.out.println("6. Upgrade Software");
-            System.out.println("7. Upgrade Hardware");
-            System.out.println("8. Logout");
+            System.out.println("3. Logout");
             System.out.print("Choose option: ");
 
             int choice;
@@ -186,41 +165,6 @@ public class ATM {
                 case 1 -> atmStatus.showStatus();
                 case 2 -> bank.getTransactionHistory().showAllHistory();
                 case 3 -> {
-                    System.out.println("\nSelect banknote to refill:");
-                    System.out.println("1. €10");
-                    System.out.println("2. €20");
-                    System.out.println("3. €50");
-                    System.out.println("4. €100");
-                    System.out.print("Choice: ");
-                    int noteChoice = Integer.parseInt(sc.nextLine());
-
-                    int noteValue = switch(noteChoice) {
-                        case 1 -> 10;
-                        case 2 -> 20;
-                        case 3 -> 50;
-                        case 4 -> 100;
-                        default -> 0;
-                    };
-
-                    if (noteValue > 0) {
-                        System.out.print("Enter quantity to add: ");
-                        int quantity = Integer.parseInt(sc.nextLine());
-                        atmStatus.refillBanknotes(noteValue, quantity);
-                    }
-                }
-                case 4 -> {
-                    System.out.print("Enter ink amount to add (receipts): ");
-                    int amount = Integer.parseInt(sc.nextLine());
-                    atmStatus.refillInk(amount);
-                }
-                case 5 -> {
-                    System.out.print("Enter paper amount to add (receipts): ");
-                    int amount = Integer.parseInt(sc.nextLine());
-                    atmStatus.refillPaper(amount);
-                }
-                case 6 -> atmStatus.upgradeSoftware();
-                case 7 -> atmStatus.upgradeHardware();
-                case 8 -> {
                     logout = true;
                     System.out.println("\nTechnician logged out");
                 }
