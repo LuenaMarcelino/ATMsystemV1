@@ -9,12 +9,15 @@ public class Bank {
     private Map<String, UserData> users;
     private Gson gson = new Gson();
     private String dataFile = "users.json";
+    private ATMStatus atmStatus;
+    private TransactionHistory transactionHistory;
 
-    public Bank() {
+    public Bank(ATMStatus atmStatus) {
+        this.atmStatus = atmStatus;
+        this.transactionHistory = new TransactionHistory();
         loadUsers();
     }
 
-    // Load users from JSON
     private void loadUsers() {
         try (Reader reader = new FileReader(dataFile)) {
             Type type = new TypeToken<Map<String, UserData>>() {}.getType();
@@ -25,7 +28,6 @@ public class Bank {
         }
     }
 
-    // Save users to JSON
     private void saveUsers() {
         try (Writer writer = new FileWriter(dataFile)) {
             gson.toJson(users, writer);
@@ -34,7 +36,6 @@ public class Bank {
         }
     }
 
-    // Authenticate customer
     public boolean authenticate(String username, String password) {
         if (users.containsKey(username)) {
             return users.get(username).getPassword().equals(password);
@@ -42,40 +43,64 @@ public class Bank {
         return false;
     }
 
-    // Check balance
     public double checkBalance(String username) {
         return users.get(username).getBalance();
     }
 
-    // Withdraw funds
     public boolean withdraw(String username, double amount) {
         UserData user = users.get(username);
-        if (user.getBalance() >= amount) {
+
+        // Check if user has enough balance
+        if (amount <= 0 || user.getBalance() < amount) {
+            System.out.println("❌ Insufficient balance.");
+            return false;
+        }
+
+        // Check if ATM has enough cash
+        if (!atmStatus.canDispense(amount)) {
+            System.out.println("ATM cannot dispense this amount. Either out of cash or cannot make exact change.");
+            return false;
+        }
+
+        // Dispense cash
+        if (atmStatus.dispenseCash(amount)) {
             user.setBalance(user.getBalance() - amount);
             saveUsers();
+            transactionHistory.addTransaction(username, "Withdrawal", amount);
             return true;
         }
+
         return false;
     }
 
-    // Deposit funds
     public void deposit(String username, double amount) {
         UserData user = users.get(username);
         user.setBalance(user.getBalance() + amount);
         saveUsers();
+        transactionHistory.addTransaction(username, "Deposit", amount);
     }
 
-    // Transfer funds
     public boolean transfer(String fromUser, String toUser, double amount) {
-        if (!users.containsKey(toUser)) return false;
-        if (withdraw(fromUser, amount)) {
-            deposit(toUser, amount);
-            return true;
+        if (!users.containsKey(toUser)) {
+            System.out.println("Recipient not found.");
+            return false;
         }
-        return false;
+
+        UserData sender = users.get(fromUser);
+
+        if (amount <= 0 || sender.getBalance() < amount) {
+            System.out.println("Insufficient balance.");
+            return false;
+        }
+
+        // Perform transfer
+        sender.setBalance(sender.getBalance() - amount);
+        users.get(toUser).setBalance(users.get(toUser).getBalance() + amount);
+        saveUsers();
+        transactionHistory.addTransaction(fromUser, "Transfer to " + toUser, amount);
+        return true;
     }
 
-    // Admin read-only info
     public int getNumberOfUsers() {
         return users.size();
     }
@@ -83,6 +108,8 @@ public class Bank {
     public double getTotalMoney() {
         return users.values().stream().mapToDouble(UserData::getBalance).sum();
     }
+
+    public TransactionHistory getTransactionHistory() {
+        return transactionHistory;
+    }
 }
-
-
